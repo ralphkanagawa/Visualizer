@@ -14,21 +14,18 @@ uploaded_files = st.file_uploader(
     "Selecciona archivo(s) KML", type=["kml"], accept_multiple_files=True
 )
 
-def limpiar_descripcion(texto):
-    if not texto:
+def extraer_tabla_html(descripcion):
+    if not descripcion:
         return ""
-    # Limpieza
-    texto = re.sub(r"<!\[CDATA\[|\]\]>", "", texto)
-    texto = re.sub(r"<[^>]+>", "", texto)
-    texto = texto.replace("\n", " ").replace("\r", " ").strip()
-
-    # Divide en pares clave:valor
-    partes = re.split(r"(?=[A-ZÁÉÍÓÚÑ0-9_]+:)", texto)
+    descripcion = re.sub(r"<!\[CDATA\[|\]\]>", "", descripcion)
+    filas = re.findall(r"<tr>.*?</tr>", descripcion)
     html = "<ul style='padding-left:12px; margin:0; font-size:13px; line-height:1.3;'>"
-    for parte in partes:
-        if ":" in parte:
-            clave, valor = parte.split(":", 1)
-            html += f"<li><b>{clave.strip()}:</b> {valor.strip()}</li>"
+    for fila in filas:
+        celdas = re.findall(r"<t[hd][^>]*>(.*?)</t[hd]>", fila)
+        if len(celdas) == 2:
+            clave = re.sub(r"<[^>]+>", "", celdas[0]).strip()
+            valor = re.sub(r"<[^>]+>", "", celdas[1]).strip()
+            html += f"<li><b>{clave}:</b> {valor}</li>"
     html += "</ul>"
     return html
 
@@ -55,7 +52,7 @@ if uploaded_files:
                     <div style='width:380px; white-space:normal; font-family:Arial, sans-serif;'>
                         <b>{file.name}</b><br>
                         <b>{name.text if name is not None else ''}</b><br>
-                        {limpiar_descripcion(desc.text if desc is not None else '')}
+                        {extraer_tabla_html(desc.text if desc is not None else '')}
                     </div>
                     """
 
