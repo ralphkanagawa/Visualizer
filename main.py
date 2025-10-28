@@ -17,11 +17,20 @@ uploaded_files = st.file_uploader(
 def limpiar_descripcion(texto):
     if not texto:
         return ""
-    texto = re.sub(r"<!\[CDATA\[|\]\]>", "", texto)  # elimina CDATA
-    texto = re.sub(r"<[^>]+>", "", texto)  # elimina HTML residual
+    # Limpieza
+    texto = re.sub(r"<!\[CDATA\[|\]\]>", "", texto)
+    texto = re.sub(r"<[^>]+>", "", texto)
     texto = texto.replace("\n", " ").replace("\r", " ").strip()
-    texto = re.sub(r"\s*([A-ZÁÉÍÓÚÑ0-9_]+):", r"<br><b>\1:</b> ", texto)
-    return texto
+
+    # Divide en pares clave:valor
+    partes = re.split(r"(?=[A-ZÁÉÍÓÚÑ0-9_]+:)", texto)
+    html = "<ul style='padding-left:12px; margin:0; font-size:13px; line-height:1.3;'>"
+    for parte in partes:
+        if ":" in parte:
+            clave, valor = parte.split(":", 1)
+            html += f"<li><b>{clave.strip()}:</b> {valor.strip()}</li>"
+    html += "</ul>"
+    return html
 
 if uploaded_files:
     m = folium.Map(location=[-2.2, -80.95], zoom_start=14, control_scale=True)
@@ -43,7 +52,7 @@ if uploaded_files:
                     lat, lon = float(lat), float(lon)
 
                     popup_html = f"""
-                    <div style='width:400px; white-space:normal;'>
+                    <div style='width:380px; white-space:normal; font-family:Arial, sans-serif;'>
                         <b>{file.name}</b><br>
                         <b>{name.text if name is not None else ''}</b><br>
                         {limpiar_descripcion(desc.text if desc is not None else '')}
@@ -56,7 +65,7 @@ if uploaded_files:
                         color="blue",
                         fill=True,
                         fill_color="blue",
-                        fill_opacity=0.7,
+                        fill_opacity=0.8,
                         popup=folium.Popup(popup_html, max_width=420)
                     ).add_to(cluster)
 
