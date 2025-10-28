@@ -2,11 +2,22 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 import xml.etree.ElementTree as ET
+import re
 
 st.set_page_config(page_title="Visor de Puntos KML", layout="wide")
 st.title("Visor de puntos desde archivo KML")
 
 uploaded_file = st.file_uploader("Sube un archivo KML", type=["kml"])
+
+def limpiar_descripcion(html_text):
+    # Decodifica entidades HTML
+    html_text = html_text.replace("&lt;", "<").replace("&gt;", ">").replace("&amp;", "&")
+    # Extrae pares clave-valor de filas <tr><th>clave</th><td>valor</td></tr>
+    filas = re.findall(r"<th[^>]*>(.*?)</th>\s*<td[^>]*>(.*?)</td>", html_text)
+    if not filas:
+        return html_text.strip()
+    texto = "\n".join([f"{k.strip()}: {v.strip()}" for k, v in filas])
+    return texto
 
 if uploaded_file:
     try:
@@ -24,7 +35,7 @@ if uploaded_file:
         name = name_elem.text if name_elem is not None else "Sin nombre"
 
         desc_elem = placemark.find("kml:description", namespace)
-        desc = desc_elem.text if desc_elem is not None else ""
+        desc = limpiar_descripcion(desc_elem.text) if desc_elem is not None else ""
 
         coord_elem = placemark.find(".//kml:Point/kml:coordinates", namespace)
         if coord_elem is not None and coord_elem.text:
@@ -46,12 +57,10 @@ if uploaded_file:
     m = folium.Map(location=center, zoom_start=15)
 
     for name, coords, desc in placemarks:
-        popup_html = f"<b>{name}</b><br>{desc}"
+        popup_html = f"<b>{name}</b><br><pre>{desc}</pre>"
         folium.Marker(location=coords, popup=popup_html).add_to(m)
 
     st.success(f"Se cargaron {len(placemarks)} puntos.")
     st_folium(m, width=1000, height=700)
 else:
     st.info("Sube un archivo KML para comenzar.")
-
-
