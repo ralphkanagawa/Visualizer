@@ -2,76 +2,46 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 from fastkml import kml
+from io import BytesIO
 
-st.set_page_config(page_title="Visor KML", layout="wide")
-st.title("Visor de archivos KML")
+st.set_page_config(page_title="Visor de Puntos KML", layout="wide")
+st.title("Visor de puntos desde archivo KML")
 
-uploaded_files = st.file_uploader(
-    "Sube uno o varios archivos KML",
-    type=["kml"],
-    accept_multiple_files=True
-)
+uploaded_file = st.file_uploader("Sube un archivo KML", type=["kml"])
 
-if uploaded_files:
-    m = folium.Map(location=[0, 0], zoom_start=2)
-    total_placemarks = 0
+if uploaded_file:
+    data = uploaded_file.read()
+    k = kml.KML()
+    try:
+        k.from_string(data)
+    except Exception as e:
+        st.error(f"Error al leer el archivo: {e}")
+        st.stop()
 
-    for uploaded_file in uploaded_files:
-        st.write(f"Procesando: **{uploaded_file.name}**")
+    placemarks = []
+    for document in k.features():
+        for feature in document.features():
+            if feature.geometry and feature.geometry.geom_type == 'Point':
+                coords = (feature.geometry.y, feature.geometry.x)
+                placemarks.append((feature.name, coords, feature.description))
 
-        k = kml.KML()
-        try:
-            k.from_string(uploaded_file.read())
-        except Exception as e:
-            st.error(f"Error al leer {uploaded_file.name}: {e}")
-            continue
+    if not placemarks:
+        st.warning("No se encontraron puntos en el archivo.")
+        st.stop()
 
-        placemarks = []
+    # Calcular centro del mapa
+    latitudes = [p[1][0] for p in placemarks]
+    longitudes = [p[1][1] for p in placemarks]
+    center = [sum(latitudes)/len(latitudes), sum(longitudes)/len(longitudes)]
 
-        def extract_features(features):
-            for f in features:
-                if hasattr(f, 'geometry') and f.geometry:
-                    placemarks.append(f)
-                if hasattr(f, 'features'):
-                    try:
-                        extract_features(list(f.features()))
-                    except Exception:
-                        continue
+    m = folium.Map(location=center, zoom_start=15)
 
-        try:
-            layers = list(k.features())
-            for layer in layers:
-                if hasattr(layer, 'features'):
-                    extract_features(list(layer.features()))
-        except Exception:
-            st.warning(f"No se pudieron extraer las features de {uploaded_file.name}")
-            continue
+    for name, coords, desc in placemarks:
+        popup_html = f"<b>{name}</b><br>{desc}"
+        folium.Marker(location=coords, popup=popup_html).add_to(m)
 
-        if not placemarks:
-            st.info(f"No se encontraron elementos geográficos en {uploaded_file.name}")
-            continue
-
-        for p in placemarks:
-            geom = p.geometry
-            if geom.geom_type == 'Point':
-                folium.Marker(
-                    location=[geom.y, geom.x],
-                    popup=p.name or uploaded_file.name
-                ).add_to(m)
-            elif geom.geom_type == 'Polygon':
-                folium.GeoJson(
-                    data=geom.__geo_interface__,
-                    name=p.name or uploaded_file.name
-                ).add_to(m)
-            elif geom.geom_type == 'LineString':
-                folium.PolyLine(
-                    locations=[(pt[1], pt[0]) for pt in geom.coords],
-                    color="blue"
-                ).add_to(m)
-
-        total_placemarks += len(placemarks)
-
-    st.success(f"Se cargaron {len(uploaded_files)} archivos y {total_placemarks} elementos geográficos.")
+    st.success(f"Se cargaron {len(placemarks)} puntos.")
     st_folium(m, width=1000, height=700)
 else:
-    st.info("Sube uno o más archivos KML para comenzar.")
+    st.info("Sube un archivo KML para comenzar.")
+
