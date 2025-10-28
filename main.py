@@ -20,9 +20,9 @@ if uploaded_file:
     placemarks = []
 
     try:
-        doc = next(k.features())  # primer nivel: Document
-        for feature in doc.features():  # segundo nivel: Placemark
-            if feature.geometry and feature.geometry.geom_type == 'Point':
+        doc = next(iter(k.features))  # primer nivel: Document
+        for feature in getattr(doc, "features", []):  # segundo nivel: Placemark
+            if hasattr(feature, "geometry") and feature.geometry and feature.geometry.geom_type == "Point":
                 coords = (feature.geometry.y, feature.geometry.x)
                 placemarks.append((feature.name, coords, feature.description))
     except Exception as e:
@@ -33,9 +33,10 @@ if uploaded_file:
         st.warning("No se encontraron puntos en el archivo.")
         st.stop()
 
+    # Centro del mapa
     latitudes = [p[1][0] for p in placemarks]
     longitudes = [p[1][1] for p in placemarks]
-    center = [sum(latitudes)/len(latitudes), sum(longitudes)/len(longitudes)]
+    center = [sum(latitudes) / len(latitudes), sum(longitudes) / len(longitudes)]
 
     m = folium.Map(location=center, zoom_start=15)
 
@@ -47,3 +48,4 @@ if uploaded_file:
     st_folium(m, width=1000, height=700)
 else:
     st.info("Sube un archivo KML para comenzar.")
+
