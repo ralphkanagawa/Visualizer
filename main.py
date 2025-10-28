@@ -72,3 +72,4 @@ if uploaded_files:
     st_folium(m, width=None, height=800)
 else:
     st.info("Sube uno o varios ficheros KML para empezar.")
+
