@@ -46,25 +46,25 @@ if uploaded_file:
         st.warning("No se encontraron puntos en el archivo.")
         st.stop()
 
-    # Centro del mapa
     latitudes = [p[1][0] for p in placemarks]
     longitudes = [p[1][1] for p in placemarks]
     center = [sum(latitudes)/len(latitudes), sum(longitudes)/len(longitudes)]
 
-    m = folium.Map(location=center, zoom_start=15)
+    m = folium.Map(location=center, zoom_start=15, control_scale=True)
 
     for name, coords, desc in placemarks:
-        popup_html = f"<b>{name}</b><br><pre>{desc}</pre>"
+        popup_html = f"<div style='width:300px; white-space:pre-wrap;'><b>{name}</b><br><pre>{desc}</pre></div>"
+        popup = folium.Popup(popup_html, max_width=400)
         folium.CircleMarker(
             location=coords,
             radius=5,
             color="blue",
             fill=True,
             fill_opacity=0.8,
-            popup=popup_html,
+            popup=popup,
         ).add_to(m)
 
-    st.success(f"Se cargaron {len(placemarks)} puntos.")
-    st_folium(m, width=1000, height=700)
+    st_folium(m, width=None, height=800, use_container_width=True)
 else:
     st.info("Sube un archivo KML para comenzar.")
+
