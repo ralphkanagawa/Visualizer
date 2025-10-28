@@ -2,7 +2,6 @@ import streamlit as st
 import folium
 from streamlit_folium import st_folium
 from fastkml import kml
-from io import BytesIO
 
 st.set_page_config(page_title="Visor de Puntos KML", layout="wide")
 st.title("Visor de puntos desde archivo KML")
@@ -19,17 +18,21 @@ if uploaded_file:
         st.stop()
 
     placemarks = []
-    for document in k.features():
-        for feature in document.features():
+
+    try:
+        doc = next(k.features())  # primer nivel: Document
+        for feature in doc.features():  # segundo nivel: Placemark
             if feature.geometry and feature.geometry.geom_type == 'Point':
                 coords = (feature.geometry.y, feature.geometry.x)
                 placemarks.append((feature.name, coords, feature.description))
+    except Exception as e:
+        st.error(f"No se pudieron extraer los puntos: {e}")
+        st.stop()
 
     if not placemarks:
         st.warning("No se encontraron puntos en el archivo.")
         st.stop()
 
-    # Calcular centro del mapa
     latitudes = [p[1][0] for p in placemarks]
     longitudes = [p[1][1] for p in placemarks]
     center = [sum(latitudes)/len(latitudes), sum(longitudes)/len(longitudes)]
@@ -44,4 +47,3 @@ if uploaded_file:
     st_folium(m, width=1000, height=700)
 else:
     st.info("Sube un archivo KML para comenzar.")
-
